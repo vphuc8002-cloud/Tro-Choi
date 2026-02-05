@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài 21: Quần thể sinh vật</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&display=swap');
+        body { font-family: 'Lexend', sans-serif; background-color: #f1f5f9; }
+        .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
+        .option-btn { transition: all 0.2s; cursor: pointer; border: 2px solid #f1f5f9; }
+        .option-btn:hover:not(:disabled) { border-color: #10b981; background-color: #f0fdf4; }
+        .option-selected { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+        .correct { background-color: #10b981 !important; color: white !important; border-color: #059669 !important; }
+        .wrong { background-color: #ef4444 !important; color: white !important; border-color: #dc2626 !important; }
+        .shake { animation: shake 0.4s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+        .timer-bar { transition: width 0.1s linear; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+        <div class="max-w-3xl w-full">
+            
+            <!-- Header Status -->
+            <div id="quiz-header" class="hidden flex justify-between items-center mb-6 glass-card p-5 rounded-2xl shadow-sm border-t-4 border-emerald-500">
+                <div class="flex-1 border-r border-slate-100 mr-4">
+                    <span id="question-counter" class="text-sm font-bold text-slate-400 uppercase tracking-widest">Câu 1 / 45</span>
+                </div>
+                <div class="text-right">
+                    <span id="display-name" class="text-[10px] font-bold text-slate-400 uppercase block leading-tight">Người chơi</span>
+                    <div class="text-2xl font-black text-emerald-600" id="score-display">0</div>
+                </div>
+            </div>
+
+            <div id="quiz-area" class="glass-card rounded-3xl shadow-2xl p-8 min-h-[520px] relative overflow-hidden flex flex-col">
+                
+                <!-- Welcome Screen -->
+                <div id="start-screen" class="text-center py-6 flex-1 flex flex-col">
+                    <div class="text-5xl mb-4">🌿</div>
+                    <h1 class="text-3xl font-bold text-slate-900 mb-6">Bài 21: Quần thể sinh vật</h1>
+                    
+                    <div class="flex-1 bg-slate-50 rounded-2xl p-4 mb-6 border border-slate-200 overflow-hidden flex flex-col">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-[10px] font-black text-slate-400 uppercase">Bảng thành tích</h3>
+                            <span id="online-status" class="text-[9px] text-emerald-500 font-bold hidden">● Trực tuyến</span>
+                        </div>
+                        <div id="leaderboard-list" class="flex-1 overflow-y-auto pr-2 space-y-2 scrollbar-hide">
+                            <p class="text-slate-400 text-sm italic py-10 text-center">Đang tải dữ liệu...</p>
+                        </div>
+                    </div>
+
+                    <div class="max-w-xs mx-auto mb-4 w-full">
+                        <input type="text" id="player-name-input" maxlength="15" placeholder="Nhập tên của bạn" 
+                               class="w-full px-5 py-4 rounded-xl border-2 border-slate-100 focus:border-emerald-500 focus:outline-none text-center font-bold text-lg shadow-sm">
+                        <p id="name-error" class="text-red-500 text-[10px] font-bold mt-2 hidden">Tên này đã được sử dụng!</p>
+                    </div>
+
+                    <button id="start-btn" class="px-10 py-4 bg-emerald-600 text-white rounded-xl font-bold text-lg hover:bg-emerald-700 transition-all shadow-lg w-full max-w-xs mx-auto active:scale-95">Bắt đầu làm bài</button>
+                </div>
+
+                <!-- Question Screen -->
+                <div id="question-screen" class="hidden flex-1 flex flex-col">
+                    <div id="timer-container" class="w-full bg-slate-200 h-2 rounded-full mb-6 overflow-hidden">
+                        <div id="timer-bar" class="timer-bar bg-emerald-500 h-full w-full"></div>
+                    </div>
+                    <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-8 leading-snug"></h2>
+                    <div id="options-grid" class="grid grid-cols-1 gap-3 mb-8"></div>
+                    
+                    <div class="mt-auto flex items-center justify-between border-t pt-6 border-slate-100">
+                        <div id="feedback-msg" class="text-sm font-bold"></div>
+                        <div class="flex gap-3">
+                            <button id="submit-btn" class="hidden px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-md">Xác nhận</button>
+                            <button id="next-btn" class="hidden px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition shadow-md">Tiếp tục</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Result Screen -->
+                <div id="result-screen" class="hidden text-center py-6 flex flex-col flex-1">
+                    <div id="result-icon" class="text-6xl mb-4">🏆</div>
+                    <h2 id="result-title" class="text-2xl font-bold mb-1">Kết thúc bài làm</h2>
+                    <h3 class="text-lg font-bold text-slate-500 mb-2" id="final-name-display"></h3>
+                    <p id="final-score" class="text-6xl font-black text-emerald-600 mb-2">0/45</p>
+                    <p id="violation-msg" class="text-red-500 font-bold text-sm mb-4 hidden">⚠️ Tự động nộp bài do rời khỏi trang!</p>
+                    
+                    <div class="flex-1 bg-slate-50 rounded-2xl p-4 mb-8 border border-slate-200 overflow-hidden">
+                         <p class="text-[10px] font-black text-slate-400 uppercase mb-3">Thành tích ghi nhận</p>
+                         <div id="final-leaderboard" class="space-y-1 max-h-48 overflow-y-auto scrollbar-hide"></div>
+                    </div>
+
+                    <button id="back-home-btn" class="px-10 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition w-full max-w-xs mx-auto shadow-lg">Làm lại bài mới</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, addDoc, serverTimestamp, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Quiz Constants
+        const TOTAL_QS = 45;
+        const TIME_LIMIT = 15;
+
+        const questionsData = [
+            { type: 'single', q: "Theo định nghĩa, quần thể sinh vật là tập hợp các cá thể:", a: ["Khác loài, sống cùng nơi, cùng thời điểm.", "Cùng loài, cùng sống trong khoảng không gian và thời gian xác định.", "Cùng loài nhưng sống ở các khu vực địa lý khác biệt.", "Nhiều loài có mối quan hệ ăn thịt lẫn nhau."], correct: 1 },
+            { type: 'truefalse', q: "Quần thể sinh vật là một đơn vị di truyền, có vốn gene đặc trưng.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Các cá thể cùng loài trong quần thể có khả năng gì để tạo ra thế hệ mới?", a: ["Cạnh tranh gay gắt.", "Sống kí sinh lẫn nhau.", "Giao phối tự do và sinh con hữu thụ.", "Chỉ sống chung một khu vực."], correct: 2 },
+            { type: 'multi', q: "Đâu là ví dụ về quan hệ hỗ trợ trong quần thể? (Chọn các ý đúng)", a: ["Thực vật sống thành cụm chắn gió bão.", "Hiện tượng liền rễ ở cây thông.", "Các con đực tranh giành con cái mùa sinh sản.", "Chó sói săn mồi theo bầy đàn."], correct: [0, 1, 3] },
+            { type: 'single', q: "Hiện tượng 'tự tỉa thưa' ở thực vật là kết quả của mối quan hệ nào?", a: ["Hỗ trợ cùng loài.", "Cạnh tranh cùng loài.", "Vật ăn thịt - con mồi.", "Cộng sinh."], correct: 1 },
+            { type: 'truefalse', q: "Quan hệ cạnh tranh cùng loài là động lực thúc đẩy sự tiến hóa.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Kích thước tối thiểu của quần thể là:", a: ["Số lượng cá thể ít nhất để quần thể duy trì và phát triển.", "Số lượng cá thể lớn nhất môi trường có thể nuôi dưỡng.", "Số lượng cá thể trung bình trong 10 năm.", "Số lượng cá thể khi nguồn sống dồi dào nhất."], correct: 0 },
+            { type: 'multi', q: "Hậu quả khi quần thể giảm xuống dưới mức tối thiểu là gì?", a: ["Khả năng hỗ trợ giảm sút.", "Dễ xảy ra giao phối cận huyết.", "Khả năng gặp gỡ đực - cái để sinh sản thấp.", "Tốc độ tăng trưởng đạt tối đa."], correct: [0, 1, 2] },
+            { type: 'single', q: "Đặc trưng nào được coi là cơ bản nhất ảnh hưởng đến mức sử dụng nguồn sống?", a: ["Tỉ lệ giới tính.", "Nhóm tuổi.", "Mật độ cá thể.", "Kiểu phân bố."], correct: 2 },
+            { type: 'truefalse', q: "Tỉ lệ giới tính trong quần thể luôn luôn cố định ở mức 1:1 trong mọi điều kiện.", a: ["Đúng", "Sai"], correct: 1 },
+            { type: 'single', q: "Nhóm tuổi nào quyết định sự phát triển kích thước quần thể trong tương lai?", a: ["Nhóm trước sinh sản.", "Nhóm đang sinh sản.", "Nhóm sau sinh sản.", "Cả 3 nhóm như nhau."], correct: 0 },
+            { type: 'single', q: "Kiểu phân bố cá thể phổ biến nhất trong tự nhiên là:", a: ["Phân bố đồng đều.", "Phân bố ngẫu nhiên.", "Phân bố theo nhóm.", "Phân bố theo tầng."], correct: 2 },
+            { type: 'single', q: "Ý nghĩa của phân bố đồng đều là:", a: ["Hỗ trợ nhau chống lại điều kiện bất lợi.", "Giảm sự cạnh tranh giữa các cá thể.", "Tận dụng tối đa nguồn sống môi trường.", "Tăng cường khả năng giao phối."], correct: 1 },
+            { type: 'single', q: "Đường cong tăng trưởng hình chữ J xảy ra khi nào?", a: ["Môi trường bị giới hạn nguồn sống.", "Môi trường không bị giới hạn (dồi dào, không kẻ thù).", "Quần thể đang ở mức tối đa.", "Khi có dịch bệnh bùng phát."], correct: 1 },
+            { type: 'multi', q: "Biến động số lượng cá thể không theo chu kì do nhân tố nào?", a: ["Thiên tai (lũ lụt, cháy rừng).", "Sự thay đổi của mùa trong năm.", "Sự can thiệp của con người.", "Dịch bệnh bất ngờ."], correct: [0, 2, 3] },
+            { type: 'single', q: "Quần thể người khác quần thể sinh vật khác ở điểm cốt lõi nào?", a: ["Có cấu trúc nhóm tuổi.", "Bị chi phối bởi các nhân tố kinh tế - xã hội, văn hóa.", "Có khả năng sinh sản.", "Có sự cạnh tranh nguồn sống."], correct: 1 },
+            { type: 'truefalse', q: "Gia tăng dân số quá nhanh dẫn đến cạn kiệt tài nguyên và ô nhiễm môi trường.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Trong nông nghiệp, việc tính toán mật độ nuôi thả phù hợp nhằm:", a: ["Tăng cạnh tranh giữa các cá thể.", "Đạt năng suất cao nhất, giảm cạnh tranh, tận dụng nguồn sống.", "Làm giảm khả năng phục hồi của quần thể.", "Tiết kiệm con giống tối đa."], correct: 1 },
+            { type: 'single', q: "Nguyên tắc khai thác hải sản bền vững là:", a: ["Đánh bắt vào mùa sinh sản để có sản lượng cao.", "Khai thác triệt để cả cá nhỏ.", "Chỉ khai thác ở mức độ cho phép, đúng kích thước lưới và đúng mùa.", "Khai thác mạnh khi quần thể dưới mức tối thiểu."], correct: 2 },
+            { type: 'truefalse', q: "Để bảo tồn loài quý hiếm, cần duy trì kích thước quần thể trên mức tối thiểu.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Cấu trúc tháp tuổi có đáy rộng, cạnh xiên mạnh lên trên là tháp:", a: ["Ổn định.", "Suy thoái.", "Phát triển.", "Cân bằng."], correct: 2 },
+            { type: 'single', q: "Mối quan hệ nào giúp các cá thể thực vật liền rễ trao đổi muối khoáng?", a: ["Hỗ trợ cùng loài.", "Cạnh tranh cùng loài.", "Kí sinh.", "Hội sinh."], correct: 0 },
+            { type: 'truefalse', q: "Mật độ cá thể được điều hòa quanh mức cân bằng nhờ hỗ trợ và cạnh tranh.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'multi', q: "Các nhân tố làm thay đổi kích thước quần thể bao gồm?", a: ["Mức độ sinh sản.", "Mức độ tử vong.", "Sự phát tán (nhập cư, di cư).", "Sự thay đổi màu sắc cá thể."], correct: [0, 1, 2] },
+            { type: 'single', q: "Khi mật độ cá thể tăng quá cao, thức ăn khan hiếm sẽ dẫn đến:", a: ["Hỗ trợ tăng mạnh.", "Cạnh tranh tăng, tử vong tăng.", "Sinh sản tăng đột biến.", "Kích thước cá thể tăng."], correct: 1 },
+            { type: 'single', q: "Phân bố ngẫu nhiên giúp sinh vật:", a: ["Hỗ trợ nhau tốt nhất.", "Giảm cạnh tranh tối đa.", "Tận dụng nguồn sống của môi trường.", "Bảo vệ lãnh thổ tốt nhất."], correct: 2 },
+            { type: 'truefalse', q: "Quần thể là đơn vị nhỏ nhất có khả năng tồn tại, sinh sản và tiến hóa độc lập theo thời gian.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Chu kì biến động của vật ăn thịt và con mồi là ví dụ của:", a: ["Biến động không theo chu kì.", "Biến động theo chu kì.", "Sự tăng trưởng chữ J.", "Sự suy thoái quần thể."], correct: 1 },
+            { type: 'single', q: "Yếu tố then chốt để đảm bảo sự phát triển bền vững ở quần thể người là:", a: ["Tăng cường khai thác tài nguyên.", "Kiểm soát gia tăng dân số.", "Mở rộng diện tích sống sang hành tinh khác.", "Tự tỉa thưa tự nhiên."], correct: 1 },
+            { type: 'multi', q: "Ứng dụng kiến thức quần thể trong bảo tồn bao gồm?", a: ["Xây dựng kế hoạch bảo vệ loài quý hiếm.", "Duy trì môi trường sống an toàn.", "Khai thác triệt để cá thể già.", "Kiểm soát các loài gây hại bằng biện pháp sinh học."], correct: [0, 1, 3] },
+            { type: 'single', q: "Tập hợp nào sau đây KHÔNG phải là một quần thể sinh vật?", a: ["Các cây thông ba lá trên một đồi thông.", "Các con cá trong một hồ Tây.", "Các con hươu sao trong một khu rừng.", "Các con chim bồ câu trong một thành phố."], correct: 1 },
+            { type: 'single', q: "Sự hỗ trợ giữa các cá thể cùng loài giúp sinh vật:", a: ["Khai thác tốt nguồn sống và tăng khả năng sống sót.", "Tăng sự cạnh tranh giành thức ăn.", "Làm giảm mật độ cá thể trong quần thể.", "Hạn chế khả năng sinh sản của các cá thể yếu."], correct: 0 },
+            { type: 'truefalse', q: "Khi mật độ quần thể vượt quá sức chịu đựng của môi trường, cạnh tranh sẽ trở nên gay gắt.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Trong quần thể, sự phân bố cá thể đồng đều giúp:", a: ["Tận dụng nguồn sống dồi dào nhất.", "Giảm sự cạnh tranh giữa các cá thể.", "Hỗ trợ nhau chống lại kẻ thù.", "Tăng khả năng giao phối giữa các cá thể."], correct: 1 },
+            { type: 'single', q: "Kích thước tối đa của quần thể phụ thuộc chủ yếu vào:", a: ["Số lượng cá thể chết đi.", "Khả năng cung cấp nguồn sống của môi trường.", "Tốc độ di cư của các cá thể.", "Tỉ lệ giới tính của quần thể."], correct: 1 },
+            { type: 'multi', q: "Đâu là nhân tố hữu sinh gây biến động số lượng quần thể?", a: ["Vật ăn thịt.", "Vật kí sinh.", "Lũ lụt.", "Cạnh tranh cùng loài."], correct: [0, 1, 3] },
+            { type: 'single', q: "Tăng trưởng dân số ở các nước đang phát triển thường có đặc điểm:", a: ["Dạng tháp ổn định.", "Dạng tháp suy thoái.", "Dạng tháp phát triển (đáy rộng).", "Dạng tháp cân đối."], correct: 2 },
+            { type: 'truefalse', q: "Nhóm tuổi sau sinh sản có vai trò quyết định mức độ sinh sản của quần thể.", a: ["Đúng", "Sai"], correct: 1 },
+            { type: 'single', q: "Trường hợp nào sau đây có đồ thị tăng trưởng hình chữ J?", a: ["Động vật trong rừng nguyên sinh.", "Vi khuẩn trong môi trường nuôi cấy dồi dào dinh dưỡng.", "Cá trong hồ bị đánh bắt quá mức.", "Thực vật trên đồng cỏ khô hạn."], correct: 1 },
+            { type: 'single', q: "Nhân tố sinh thái nào sau đây là nhân tố phụ thuộc mật độ?", a: ["Nhiệt độ môi trường.", "Ánh sáng mặt trời.", "Sự cạnh tranh nguồn sống.", "Độ ẩm không khí."], correct: 2 },
+            { type: 'single', q: "Ý nghĩa thực tiễn của việc nghiên cứu cấu trúc tuổi là:", a: ["Để biết quần thể đang giàu hay nghèo.", "Để bảo vệ các cá thể già.", "Để dự báo biến động số lượng và khai thác hợp lí.", "Để tăng mật độ cá thể lên mức tối đa."], correct: 2 },
+            { type: 'truefalse', q: "Ở một số loài rùa, nhiệt độ ấp trứng quyết định giới tính của cá thể con.", a: ["Đúng", "Sai"], correct: 0 },
+            { type: 'single', q: "Biến động số lượng cá thể theo chu kì mùa thường gặp ở các loài:", a: ["Có tuổi thọ cao.", "Có kích thước cơ thể lớn.", "Vòng đời ngắn, sinh sản nhanh.", "Di cư từ xa đến."], correct: 2 },
+            { type: 'multi', q: "Khai thác tài nguyên bền vững cần dựa trên các đặc trưng nào?", a: ["Kích thước tối thiểu.", "Kích thước tối đa.", "Mật độ cá thể.", "Khả năng phục hồi của quần thể."], correct: [0, 2, 3] },
+            { type: 'single', q: "Sự cạnh tranh giữa các cá thể trong quần thể dẫn đến:", a: ["Sự tiêu diệt toàn bộ loài.", "Sự phân bố cá thể hợp lí hơn.", "Sự hỗ trợ lẫn nhau tăng lên.", "Sự biến mất của vốn gene."], correct: 1 }
+        ];
+
+        // State variables
+        let db = null;
+        let auth = null;
+        let appId = 'sinh-hoc-12-offline';
+        let isOnline = false;
+        let currentIdx = 0, score = 0, sessionQuestions = [], totalTimeUsed = 0;
+        let timerInterval, timeLeft = 15;
+        let isGameActive = false;
+        let allResults = [];
+
+        async function setupFirebase() {
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    appId = typeof __app_id !== 'undefined' ? __app_id : 'sinh-hoc-12-github';
+                    
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    isOnline = true;
+                    document.getElementById('online-status').classList.remove('hidden');
+                    listenToLeaderboard();
+                } else {
+                    renderOfflineLeaderboard();
+                }
+            } catch (e) {
+                renderOfflineLeaderboard();
+            }
+        }
+
+        function listenToLeaderboard() {
+            if (!db) return;
+            const qRef = collection(db, 'artifacts', appId, 'public', 'data', 'top_scores');
+            onSnapshot(qRef, (snap) => {
+                allResults = [];
+                snap.forEach(doc => allResults.push(doc.data()));
+                allResults.sort((a, b) => b.score !== a.score ? b.score - a.score : a.timeUsed - b.timeUsed);
+                updateLeaderboardUI();
+            }, (err) => console.error("Leaderboard error:", err));
+        }
+
+        function renderOfflineLeaderboard() {
+            const data = localStorage.getItem('sinh_hoc_12_scores');
+            allResults = data ? JSON.parse(data) : [];
+            allResults.sort((a, b) => b.score !== a.score ? b.score - a.score : a.timeUsed - b.timeUsed);
+            updateLeaderboardUI();
+        }
+
+        function updateLeaderboardUI() {
+            const createRow = (p, i) => `
+                <div class="flex items-center justify-between p-2.5 rounded-lg ${i === 0 ? 'bg-amber-50 border border-amber-100' : 'bg-white border border-slate-100'}">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="w-5 h-5 rounded-md ${i < 3 ? 'bg-slate-800' : 'bg-slate-200'} text-white text-[9px] font-bold flex items-center justify-center shrink-0">${i+1}</span>
+                        <span class="font-bold text-xs text-slate-700 truncate">${p.name}</span>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <span class="text-emerald-600 font-black text-xs">${p.score}đ</span>
+                    </div>
+                </div>`;
+            const html = allResults.slice(0, 20).map(createRow).join('') || `<p class="text-slate-400 text-xs italic py-8 text-center">Chưa có dữ liệu</p>`;
+            document.getElementById('leaderboard-list').innerHTML = html;
+            const fl = document.getElementById('final-leaderboard'); if(fl) fl.innerHTML = html;
+        }
+
+        function renderQuestion() {
+            const q = sessionQuestions[currentIdx];
+            document.getElementById('question-counter').innerText = `Câu ${currentIdx + 1} / ${TOTAL_QS}`;
+            document.getElementById('question-text').innerText = q.q;
+            document.getElementById('feedback-msg').innerText = "";
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('submit-btn').classList.toggle('hidden', q.type !== 'multi');
+
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = "";
+            q.a.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full p-4 text-left rounded-xl font-medium bg-white shadow-sm flex items-center gap-3 text-sm";
+                btn.innerHTML = `<span class="w-6 h-6 rounded-md bg-slate-50 flex items-center justify-center text-[10px] text-slate-400 font-bold border shrink-0">${String.fromCharCode(65+i)}</span> <span class="flex-1">${opt}</span>`;
+                btn.onclick = () => handleChoice(i, btn);
+                grid.appendChild(btn);
+            });
+            window.selectedAnswers = [];
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = TIME_LIMIT;
+            timerInterval = setInterval(() => {
+                timeLeft -= 0.1; totalTimeUsed += 0.1;
+                if (timeLeft <= 0) { clearInterval(timerInterval); checkAnswer([], true); }
+                document.getElementById('timer-bar').style.width = Math.max(0, (timeLeft / TIME_LIMIT) * 100) + "%";
+            }, 100);
+        }
+
+        function handleChoice(idx, btn) {
+            if (timeLeft <= 0 || !document.getElementById('next-btn').classList.contains('hidden')) return; 
+            const q = sessionQuestions[currentIdx];
+            if (q.type === 'multi') {
+                if (window.selectedAnswers.includes(idx)) {
+                    window.selectedAnswers = window.selectedAnswers.filter(x => x !== idx);
+                    btn.classList.remove('option-selected');
+                } else {
+                    window.selectedAnswers.push(idx);
+                    btn.classList.add('option-selected');
+                }
+            } else { clearInterval(timerInterval); checkAnswer([idx]); }
+        }
+
+        function checkAnswer(userChoices, isAuto = false) {
+            const q = sessionQuestions[currentIdx];
+            const feedback = document.getElementById('feedback-msg');
+            let isCorrect = Array.isArray(q.correct) ? (userChoices.length === q.correct.length && userChoices.every(c => q.correct.includes(c))) : (userChoices[0] === q.correct);
+
+            document.querySelectorAll('.option-btn').forEach((btn, i) => {
+                btn.disabled = true;
+                const isCorrectOpt = Array.isArray(q.correct) ? q.correct.includes(i) : i === q.correct;
+                if (isCorrectOpt) btn.classList.add('correct');
+                else if (userChoices.includes(i)) btn.classList.add('wrong');
+            });
+
+            if (isCorrect) { score++; feedback.innerText = "Chính xác! ✨"; feedback.className = "text-sm font-bold text-emerald-600"; }
+            else { feedback.innerText = isAuto ? "Hết giờ! ⏰" : "Sai rồi! ❌"; feedback.className = "text-sm font-bold text-red-500"; }
+
+            document.getElementById('score-display').innerText = score;
+            document.getElementById('submit-btn').classList.add('hidden');
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        async function finishGame(isViolation = false) {
+            if (!isGameActive) return;
+            isGameActive = false;
+            clearInterval(timerInterval);
+            
+            document.getElementById('question-screen').classList.add('hidden');
+            document.getElementById('quiz-header').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            document.getElementById('final-name-display').innerText = window.playerName;
+            document.getElementById('final-score').innerText = `${score} / ${TOTAL_QS}`;
+            
+            if (isViolation) {
+                document.getElementById('result-icon').innerText = "🚫";
+                document.getElementById('result-title').innerText = "Bài làm bị hủy";
+                document.getElementById('violation-msg').classList.remove('hidden');
+            }
+
+            const resultData = {
+                name: window.playerName + (isViolation ? " (Rời trang)" : ""), 
+                score: score, 
+                timeUsed: parseFloat(totalTimeUsed.toFixed(1)),
+                timestamp: Date.now()
+            };
+
+            if (isOnline && db) {
+                try {
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'top_scores'), {
+                        ...resultData,
+                        timestamp: serverTimestamp()
+                    });
+                } catch (e) { saveOffline(resultData); }
+            } else {
+                saveOffline(resultData);
+            }
+        }
+
+        function saveOffline(data) {
+            const current = JSON.parse(localStorage.getItem('sinh_hoc_12_scores') || '[]');
+            current.push(data);
+            localStorage.setItem('sinh_hoc_12_scores', JSON.stringify(current));
+            renderOfflineLeaderboard();
+        }
+
+        // Event listeners
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && isGameActive) {
+                finishGame(true);
+            }
+        });
+
+        document.getElementById('start-btn').onclick = () => {
+            const nameInput = document.getElementById('player-name-input');
+            const name = nameInput.value.trim();
+            if (!name) {
+                nameInput.classList.add('shake');
+                setTimeout(() => nameInput.classList.remove('shake'), 400);
+                return;
+            }
+            
+            window.playerName = name;
+            sessionQuestions = [...questionsData].sort(() => Math.random() - 0.5);
+            currentIdx = 0; score = 0; totalTimeUsed = 0; isGameActive = true;
+            
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('quiz-header').classList.remove('hidden');
+            document.getElementById('question-screen').classList.remove('hidden');
+            document.getElementById('display-name').innerText = name;
+            renderQuestion();
+        };
+
+        document.getElementById('submit-btn').onclick = () => {
+            if (window.selectedAnswers?.length > 0) { clearInterval(timerInterval); checkAnswer(window.selectedAnswers); }
+        };
+
+        document.getElementById('next-btn').onclick = () => {
+            currentIdx++;
+            if (currentIdx < TOTAL_QS) renderQuestion();
+            else finishGame();
+        };
+
+        document.getElementById('back-home-btn').onclick = () => location.reload();
+
+        // Init
+        setupFirebase();
+    </script>
+</body>
+</html>
